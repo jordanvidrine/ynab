@@ -20,7 +20,7 @@ app.use(bodyParser.urlencoded({extended:false}));
 
 // Handle incoming text to get the balance of specefied budget
 app.post('/', smsParse, (req,res) => {
-  res.status(200).send(`You have ${req.balance} left in your ${req.budget} budget.`)
+  res.status(200).send(res.message)
 })
 
 http.createServer(app).listen(1337, () => {

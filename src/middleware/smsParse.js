@@ -9,25 +9,21 @@ const ynabActions = require('../helpers/ynabActions')
 smsParse = async function(req,res,next) {
   let category = req.body.body.split(' ')[1].replace('-',' ');
   let action = req.body.body.split(' ')[0]
+  let amt = req.body.body.split(' ')[2]
 
   if (action.toLowerCase() === 'bal') {
     try {
       let data = await ynabActions.getBalance(category);
-      req.balance = data.balance;
-      req.budget = data.budget;
+      res.message = `You have ${data.balance} left in your ${data.budget} budget.`
       next();
     } catch(e) {
-      console.log(e)
-      res.status(500).send('Couldnt get the balance.')
+      // console.log(e)
+      res.status(500).send(e)
     }
 
-  } else if (action.toLowerCase() === 'deb') {
-    res.send(`Perform Debit Task on ${category}`)
-  } else if (action.toLowerCase() === 'cred') {
-    res.send(`Perform Credit Task on ${category}`)
-  }
-
-  else {
+  } else if (action.toLowerCase() === 'deb' || action.toLowerCase() === 'cred') {
+    ynabActions.addTransaction(category,amt)
+  } else {
   res.send('Error: Invalid Syntax')
   }
 }
