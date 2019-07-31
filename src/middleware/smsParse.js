@@ -2,29 +2,52 @@ const getCategory = require('../helpers/getCategory')
 const ynabActions = require('../helpers/ynabActions')
 
 // Syntax Examples
-// Balance Inquiry: BAL Groceries >>  You have $50.41 left in your Dining Out budget.
-// Enter Purchase: DEB Groceries 12.34 Wal-Mart >> You spent 12.34 on Groceries at Wal-Mart
-// Enter Credit: CRED Groceries 10.00 Wal-Mart >> You got a refund on Groceries for 10.00 at Wal-Mart
+// Balance Inquiry: Groceries >>  You have $50.41 left in your Dining Out budget.
+// Enter Purchase: Groceries -12.34 Wal-Mart >> Your transaction with Wal Mart in the amount of $-12.34 was successfully entered.
+// Enter Credit: Groceries 10.00 Wal-Mart >> Your transaction with Wal Mart in the amount of $10.00 was successfully entered.
 
 smsParse = async function(req,res,next) {
-  let category = req.body.body.split(' ')[1].replace('-',' ');
-  let action = req.body.body.split(' ')[0]
-  let amt = req.body.body.split(' ')[2]
+  let numOfArgs = req.body.Body.split(' ').length;
 
-  if (action.toLowerCase() === 'bal') {
-    try {
-      let data = await ynabActions.getBalance(category);
-      res.message = `You have ${data.balance} left in your ${data.budget} budget.`
-      next();
-    } catch(e) {
-      // console.log(e)
-      res.status(500).send(e)
+  // checks if arguments exist
+  if (numOfArgs) {
+    let category = req.body.Body.split(' ')[0].replace('-',' ');
+
+    // Only passing in one argument retrieves the balance of that argument/category
+    if (numOfArgs === 1) {
+      try {
+        let data = await ynabActions.getBalance(category);
+        res.message = `You have ${data.balance} left in your ${data.budget} budget.`
+        next();
+      } catch(e) {
+        next(e);
+      }
+
+    // To Cred or Deb an acct, 3 arguments must be passed
+    } else if (numOfArgs === 3) {
+      let args = [...req.body.Body.split(' ')]
+      let cat = args[0].replace('-',' ');
+
+      // converting amt to miliunits (number passed MUST in have two decimal places >> 2.33, -23.45)
+      args[1] = args[1].replace('.','') + '0'
+      let amt = Number(args[1]);
+      let payee = args[2].replace('-',' ');
+
+      // checks the argument types, must be correct to continue on
+      if (typeof cat === 'string' && typeof amt === 'number' && typeof payee === 'string') {
+        try {
+          let transactionData = await ynabActions.addTransaction(category,amt,payee)
+            res.message = transactionData.successMsg;
+
+          // res.message = `A transaction will be created in the ${transactionData.category} category for the amount of ${transactionData.amt} to ${transactionData.payee}.`
+          next()
+        } catch(e) {
+          next(e);
+        }
+      }
+    } else {
+      res.status(500).send({Error:'Syntax Error!\nFor Balance Inquiry >> Category \n For Purchase >> Category, -Purchase Amt, Payee\n For Refund >> Category, Refund Amt, Payee' });
     }
-
-  } else if (action.toLowerCase() === 'deb' || action.toLowerCase() === 'cred') {
-    ynabActions.addTransaction(category,amt)
-  } else {
-  res.send('Error: Invalid Syntax')
   }
 }
 
