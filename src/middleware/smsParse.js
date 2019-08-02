@@ -17,6 +17,7 @@ smsParse = async function(req,res,next) {
     if (numOfArgs === 1) {
       try {
         let data = await ynabActions.getBalance(category);
+        // saves the response to res.message to be passed back to the user
         res.message = `You have ${data.balance} left in your ${data.budget} budget.`
         next();
       } catch(e) {
@@ -37,15 +38,16 @@ smsParse = async function(req,res,next) {
       if (typeof cat === 'string' && typeof amt === 'number' && typeof payee === 'string') {
         try {
           let transactionData = await ynabActions.addTransaction(category,amt,payee)
-            res.message = transactionData.successMsg;
+          // saves the response to res.message to be passed back to the user
+          res.message = transactionData.successMsg;
 
-          // res.message = `A transaction will be created in the ${transactionData.category} category for the amount of ${transactionData.amt} to ${transactionData.payee}.`
           next()
         } catch(e) {
           next(e);
         }
       }
     } else {
+      // Syntax Error Message
       res.status(500).send({Error:'Syntax Error!\nFor Balance Inquiry >> Category \n For Purchase >> Category, -Purchase Amt, Payee\n For Refund >> Category, Refund Amt, Payee' });
     }
   }
